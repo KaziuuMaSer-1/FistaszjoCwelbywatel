@@ -1,4 +1,3 @@
-
 var selector = document.querySelector(".selector_box");
 selector.addEventListener('click', () => {
     if (selector.classList.contains("selector_open")){
@@ -43,6 +42,7 @@ upload.addEventListener('click', () => {
     upload.classList.remove("error_shown")
 });
 
+// Zmodyfikowana sekcja z obsługą błędów dla ładowania zdjęcia
 imageInput.addEventListener('change', (event) => {
 
     upload.classList.remove("upload_loaded");
@@ -54,24 +54,51 @@ imageInput.addEventListener('change', (event) => {
     var data = new FormData();
     data.append("image", file);
 
-    fetch('	https://api.imgur.com/3/image' ,{
+    fetch('https://api.imgur.com/3/image' ,{ // Upewnij się, że nie ma zbędnych spacji przed URL
         method: 'POST',
         headers: {
+            // Upewnij się, że ten Client-ID jest poprawny
             'Authorization': 'Client-ID ec67bcef2e19c08'
         },
         body: data
     })
-    .then(result => result.json())
+    .then(result => {
+        // Sprawdź, czy odpowiedź HTTP była pomyślna
+        if (!result.ok) {
+            // Rzuć błąd, jeśli status to np. 400, 403, 500
+            throw new Error('Błąd HTTP ' + result.status + '. Sprawdź Client-ID i limit żądań.');
+        }
+        return result.json();
+    })
     .then(response => {
         
+        // Sprawdź, czy API Imgur zwróciło sukces w odpowiedzi
+        if (response.success === false) { 
+             throw new Error('Błąd API Imgur: ' + (response.data.error || 'Nieznany błąd Imgur'));
+        }
+
         var url = response.data.link;
         upload.classList.remove("error_shown")
         upload.setAttribute("selected", url);
         upload.classList.add("upload_loaded");
         upload.classList.remove("upload_loading");
         upload.querySelector(".upload_uploaded").src = url;
+        console.log('Zdjęcie załadowane pomyślnie. URL:', url); // Komunikat dla dewelopera
 
     })
+    .catch(error => {
+        // Główna sekcja obsługi błędów: wyłącza ładowanie i sygnalizuje problem
+        console.error('KRYTYCZNY BŁĄD podczas ładowania zdjęcia:', error);
+        
+        // Resetuje stan ładowania
+        upload.classList.remove("upload_loading");
+        
+        // Wyświetla komunikat błędu
+        upload.classList.add("error_shown"); 
+        
+        // Opcjonalnie: alert dla użytkownika
+        alert("Wystąpił błąd podczas dodawania zdjęcia! Spróbuj ponownie. Szczegóły w konsoli przeglądarki (F12)."); 
+    });
 
 })
 
